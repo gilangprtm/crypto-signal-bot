@@ -41,6 +41,9 @@ COPY --from=builder /app/crypto-signal-bot .
 # Copy any additional files if needed
 COPY --from=builder /app/supabase_schema.sql ./
 
+# Create tmp directory for PID file
+RUN mkdir -p /tmp && chmod 777 /tmp
+
 # Change ownership to appuser
 RUN chown -R appuser:appuser /app
 

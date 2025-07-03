@@ -6,8 +6,12 @@ import (
 	"crypto-signal-bot/internal/database"
 	"crypto-signal-bot/internal/scheduler"
 	"crypto-signal-bot/internal/services"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -26,6 +30,12 @@ func main() {
 
 	// Setup logging
 	setupLogging(cfg.LogLevel)
+
+	// Check for existing instance and create PID file
+	if err := createPIDFile(); err != nil {
+		logrus.Fatalf("Failed to create PID file: %v", err)
+	}
+	defer removePIDFile()
 
 	logrus.Info("🚀 Starting Personal Crypto Signal Bot (Production Mode)...")
 
@@ -132,6 +142,41 @@ func main() {
 	}
 
 	logrus.Info("👋 Goodbye!")
+}
+
+const pidFile = "/tmp/crypto-signal-bot.pid"
+
+func createPIDFile() error {
+	// Check if PID file exists
+	if _, err := os.Stat(pidFile); err == nil {
+		// Read existing PID
+		data, err := ioutil.ReadFile(pidFile)
+		if err == nil {
+			if pid, err := strconv.Atoi(string(data)); err == nil {
+				// Check if process is still running
+				if process, err := os.FindProcess(pid); err == nil {
+					if err := process.Signal(syscall.Signal(0)); err == nil {
+						return fmt.Errorf("bot is already running with PID %d", pid)
+					}
+				}
+			}
+		}
+		// Remove stale PID file
+		os.Remove(pidFile)
+	}
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(pidFile), 0755); err != nil {
+		return fmt.Errorf("failed to create PID directory: %w", err)
+	}
+
+	// Write current PID
+	pid := os.Getpid()
+	return ioutil.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0644)
+}
+
+func removePIDFile() {
+	os.Remove(pidFile)
 }
 
 func setupLogging(level string) {

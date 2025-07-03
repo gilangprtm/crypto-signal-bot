@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,13 +28,37 @@ func NewSupabaseClient(cfg *config.Config) (*SupabaseClient, error) {
 		return nil, fmt.Errorf("invalid Supabase URL: %s", cfg.SupabaseURL)
 	}
 
+	// Resolve hostname to IPv4 address to avoid IPv6 issues
+	hostname := fmt.Sprintf("db.%s.supabase.co", projectID)
+	logrus.Debugf("Resolving hostname: %s", hostname)
+
+	// Try to resolve to IPv4 address
+	ips, err := net.LookupIP(hostname)
+	var ipv4Host string
+	if err != nil {
+		logrus.Warnf("Failed to resolve hostname %s: %v, using hostname directly", hostname, err)
+		ipv4Host = hostname
+	} else {
+		// Find first IPv4 address
+		for _, ip := range ips {
+			if ip.To4() != nil {
+				ipv4Host = ip.String()
+				logrus.Debugf("Resolved %s to IPv4: %s", hostname, ipv4Host)
+				break
+			}
+		}
+		if ipv4Host == "" {
+			logrus.Warn("No IPv4 address found, using hostname")
+			ipv4Host = hostname
+		}
+	}
+
 	// Build connection string for Supabase PostgreSQL
 	// Use service key as password for database connection
-	// Force IPv4 to avoid IPv6 connection issues in production
-	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require password=%s connect_timeout=10",
-		projectID, cfg.SupabaseServiceKey)
+	connStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require password=%s connect_timeout=10",
+		ipv4Host, cfg.SupabaseServiceKey)
 
-	logrus.Debugf("Database connection string: host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require password=***", projectID)
+	logrus.Debugf("Database connection string: host=%s port=5432 user=postgres dbname=postgres sslmode=require password=***", ipv4Host)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
