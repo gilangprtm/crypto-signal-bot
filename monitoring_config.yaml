@@ -1,0 +1,213 @@
+# CryptoSignal AI - Monitoring Configuration
+
+# Prometheus Configuration
+prometheus:
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+  
+  scrape_configs:
+    - job_name: 'ai-engine'
+      static_configs:
+        - targets: ['ai-engine:8080']
+      metrics_path: '/metrics'
+      scrape_interval: 10s
+    
+    - job_name: 'n8n'
+      static_configs:
+        - targets: ['n8n:5678']
+      metrics_path: '/metrics'
+      scrape_interval: 30s
+    
+    - job_name: 'postgres'
+      static_configs:
+        - targets: ['postgres-exporter:9187']
+    
+    - job_name: 'redis'
+      static_configs:
+        - targets: ['redis-exporter:9121']
+
+# Grafana Dashboards
+grafana:
+  dashboards:
+    - name: "System Overview"
+      panels:
+        - title: "Signal Generation Rate"
+          type: "graph"
+          targets:
+            - expr: "rate(signals_generated_total[5m])"
+        
+        - title: "API Response Time"
+          type: "graph"
+          targets:
+            - expr: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"
+        
+        - title: "Active Users"
+          type: "stat"
+          targets:
+            - expr: "active_users_total"
+        
+        - title: "Signal Accuracy"
+          type: "gauge"
+          targets:
+            - expr: "signal_accuracy_percentage"
+    
+    - name: "Trading Performance"
+      panels:
+        - title: "Win Rate by Symbol"
+          type: "table"
+          targets:
+            - expr: "win_rate_by_symbol"
+        
+        - title: "Average Return"
+          type: "graph"
+          targets:
+            - expr: "avg_return_percentage"
+        
+        - title: "Risk Metrics"
+          type: "heatmap"
+          targets:
+            - expr: "risk_metrics_by_timeframe"
+
+# Alert Rules
+alerting:
+  rules:
+    - name: "system_alerts"
+      rules:
+        - alert: "HighErrorRate"
+          expr: "rate(http_requests_total{status=~'5..'}[5m]) > 0.1"
+          for: "5m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value }} errors per second"
+        
+        - alert: "SignalGenerationStopped"
+          expr: "rate(signals_generated_total[10m]) == 0"
+          for: "10m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "Signal generation has stopped"
+        
+        - alert: "DatabaseConnectionLoss"
+          expr: "up{job='postgres'} == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "Database connection lost"
+        
+        - alert: "LowSignalAccuracy"
+          expr: "signal_accuracy_percentage < 60"
+          for: "30m"
+          labels:
+            severity: "warning"
+          annotations:
+            summary: "Signal accuracy below threshold"
+            description: "Current accuracy: {{ $value }}%"
+
+# Custom Metrics
+custom_metrics:
+  ai_engine:
+    - name: "signals_generated_total"
+      type: "counter"
+      help: "Total number of signals generated"
+      labels: ["symbol", "action", "confidence_range"]
+    
+    - name: "signal_accuracy_percentage"
+      type: "gauge"
+      help: "Current signal accuracy percentage"
+      labels: ["symbol", "timeframe"]
+    
+    - name: "model_prediction_time_seconds"
+      type: "histogram"
+      help: "Time taken for model prediction"
+      buckets: [0.1, 0.5, 1.0, 2.0, 5.0]
+    
+    - name: "active_users_total"
+      type: "gauge"
+      help: "Number of active users"
+      labels: ["subscription_tier"]
+  
+  n8n:
+    - name: "workflow_executions_total"
+      type: "counter"
+      help: "Total workflow executions"
+      labels: ["workflow_name", "status"]
+    
+    - name: "signal_distribution_time_seconds"
+      type: "histogram"
+      help: "Time taken to distribute signals"
+      buckets: [1, 5, 10, 30, 60]
+    
+    - name: "telegram_delivery_success_rate"
+      type: "gauge"
+      help: "Telegram message delivery success rate"
+
+# Log Aggregation
+logging:
+  elasticsearch:
+    hosts: ["elasticsearch:9200"]
+    index_pattern: "cryptosignal-logs-*"
+  
+  logstash:
+    input:
+      beats:
+        port: 5044
+    
+    filter:
+      grok:
+        patterns:
+          - pattern: "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} %{GREEDYDATA:message}"
+      
+      mutate:
+        add_field:
+          service: "%{[fields][service]}"
+    
+    output:
+      elasticsearch:
+        hosts: ["elasticsearch:9200"]
+        index: "cryptosignal-logs-%{+YYYY.MM.dd}"
+
+# Health Checks
+health_checks:
+  endpoints:
+    - name: "ai-engine"
+      url: "http://ai-engine:8080/health"
+      interval: "30s"
+      timeout: "10s"
+      expected_status: 200
+    
+    - name: "n8n"
+      url: "http://n8n:5678/healthz"
+      interval: "30s"
+      timeout: "10s"
+      expected_status: 200
+    
+    - name: "database"
+      type: "tcp"
+      address: "postgres:5432"
+      interval: "30s"
+      timeout: "5s"
+    
+    - name: "redis"
+      type: "tcp"
+      address: "redis:6379"
+      interval: "30s"
+      timeout: "5s"
+
+# Performance Thresholds
+performance:
+  sla_targets:
+    api_response_time_p95: "500ms"
+    signal_generation_time: "30s"
+    uptime: "99.9%"
+    signal_accuracy: "70%"
+  
+  scaling_triggers:
+    cpu_threshold: "70%"
+    memory_threshold: "80%"
+    request_rate_threshold: "1000/min"
+    queue_length_threshold: 100

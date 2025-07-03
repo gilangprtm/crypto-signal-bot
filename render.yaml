@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: crypto-signal-bot
+    env: go
+    buildCommand: go build -o crypto-signal-bot .
+    startCommand: ./crypto-signal-bot
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: COINMARKETCAP_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: PORT
+        value: 8080
+      - key: LOG_LEVEL
+        value: info
+      - key: MIN_CONFIDENCE_THRESHOLD
+        value: "0.70"
+      - key: MAX_SIGNALS_PER_DAY
+        value: "10"
+      - key: ANALYSIS_INTERVAL_SECONDS
+        value: "900"

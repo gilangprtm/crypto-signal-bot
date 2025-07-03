@@ -1,0 +1,22 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[env]
+# Environment variables will be set in Railway dashboard
+# Required variables:
+# - COINMARKETCAP_API_KEY
+# - SUPABASE_URL  
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_KEY
+# - TELEGRAM_BOT_TOKEN
+# - TELEGRAM_CHAT_ID
+# - PORT (automatically set by Railway)
+
+[experimental]
+incrementalBuild = true
