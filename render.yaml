@@ -5,7 +5,6 @@ services:
     buildCommand: go build -o crypto-signal-bot .
     startCommand: ./crypto-signal-bot
     plan: free
-    healthCheckPath: /health
     envVars:
       - key: COINMARKETCAP_API_KEY
         sync: false

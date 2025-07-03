@@ -77,12 +77,7 @@ func (s *Scheduler) Start() error {
 	}
 	logrus.Info("✅ Cleanup scheduled: 02:00 daily")
 
-	// Health check job - every 30 minutes
-	_, err = s.cron.AddFunc("0 */30 * * * *", s.runHealthCheck)
-	if err != nil {
-		return fmt.Errorf("failed to add health check job: %w", err)
-	}
-	logrus.Info("✅ Health check scheduled: every 30 minutes")
+	// No health check needed for personal bot
 
 	// Start the cron scheduler
 	s.cron.Start()
@@ -172,29 +167,7 @@ func (s *Scheduler) runCleanup() {
 	logrus.Info("✅ Cleanup completed")
 }
 
-func (s *Scheduler) runHealthCheck() {
-	logrus.Debug("💓 Running health check...")
-	
-	// Check bot service status
-	status := s.botService.GetStatus()
-	
-	isRunning, ok := status["is_running"].(bool)
-	if !ok || !isRunning {
-		logrus.Warn("Bot service is not running")
-		s.sendErrorNotification("Health Check Warning", "Bot service is not running")
-		return
-	}
-	
-	// Check last analysis time
-	lastAnalysis, ok := status["last_analysis_time"].(time.Time)
-	if ok && time.Since(lastAnalysis) > time.Hour {
-		logrus.Warn("Last analysis was more than 1 hour ago")
-		s.sendErrorNotification("Health Check Warning", "Last analysis was more than 1 hour ago")
-		return
-	}
-	
-	logrus.Debug("✅ Health check passed")
-}
+// Health check removed - not needed for personal bot
 
 func (s *Scheduler) sendErrorNotification(title, message string) {
 	// TODO: Implement error notification
@@ -249,8 +222,6 @@ func (s *Scheduler) RunJobNow(jobName string) error {
 		go s.runLearningOptimization()
 	case "cleanup":
 		go s.runCleanup()
-	case "health_check":
-		go s.runHealthCheck()
 	default:
 		return fmt.Errorf("unknown job name: %s", jobName)
 	}
