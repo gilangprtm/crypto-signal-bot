@@ -182,6 +182,12 @@ func (bs *BotService) analyzeCryptocurrency(crypto *models.Cryptocurrency) error
 }
 
 func (bs *BotService) saveMarketSnapshot(crypto *models.Cryptocurrency, marketData *MarketData, indicators *TechnicalIndicators) error {
+	// Skip saving if database is not available
+	if bs.db == nil {
+		logrus.Debug("Database not available, skipping market snapshot save")
+		return nil
+	}
+
 	snapshot := &models.MarketSnapshot{
 		ID:               uuid.New(),
 		CryptoID:         crypto.ID,
@@ -244,10 +250,42 @@ func (bs *BotService) initializeCryptoList() error {
 		{"ATOM", "Cosmos", "cosmos"},
 	}
 
+	// If database is not available, use default list
+	if bs.db == nil {
+		logrus.Warn("Database not available, using default cryptocurrency list")
+		for _, defaultCrypto := range defaultCryptos {
+			newCrypto := &models.Cryptocurrency{
+				ID:          uuid.New(),
+				Symbol:      defaultCrypto.Symbol,
+				Name:        defaultCrypto.Name,
+				CoingeckoID: defaultCrypto.CoingeckoID,
+				IsActive:    true,
+				CreatedAt:   time.Now(),
+			}
+			bs.cryptoList = append(bs.cryptoList, newCrypto)
+		}
+		logrus.Infof("✅ Initialized %d cryptocurrencies (offline mode)", len(bs.cryptoList))
+		return nil
+	}
+
 	// Get existing cryptocurrencies from database
 	existingCryptos, err := bs.db.GetCryptocurrencies()
 	if err != nil {
-		return err
+		logrus.Warnf("Failed to get cryptocurrencies from database: %v, using defaults", err)
+		// Fallback to default list
+		for _, defaultCrypto := range defaultCryptos {
+			newCrypto := &models.Cryptocurrency{
+				ID:          uuid.New(),
+				Symbol:      defaultCrypto.Symbol,
+				Name:        defaultCrypto.Name,
+				CoingeckoID: defaultCrypto.CoingeckoID,
+				IsActive:    true,
+				CreatedAt:   time.Now(),
+			}
+			bs.cryptoList = append(bs.cryptoList, newCrypto)
+		}
+		logrus.Infof("✅ Initialized %d cryptocurrencies (fallback mode)", len(bs.cryptoList))
+		return nil
 	}
 
 	// Create map of existing symbols
@@ -294,10 +332,16 @@ func (bs *BotService) testConnections() error {
 		return err
 	}
 
-	// Test database connection
-	if err := bs.db.TestConnection(); err != nil {
-		logrus.Error("Database connection test failed: ", err)
-		return err
+	// Test database connection (only if available)
+	if bs.db != nil {
+		if err := bs.db.TestConnection(); err != nil {
+			logrus.Warn("Database connection test failed (continuing without database): ", err)
+			// Don't return error, continue without database
+		} else {
+			logrus.Info("✅ Database connection test passed")
+		}
+	} else {
+		logrus.Warn("⚠️ Database not available, skipping database test")
 	}
 
 	// Test data collector (get BTC data)
@@ -306,7 +350,7 @@ func (bs *BotService) testConnections() error {
 		return err
 	}
 
-	logrus.Info("✅ All connections tested successfully")
+	logrus.Info("✅ Essential connections tested successfully")
 	return nil
 }
 

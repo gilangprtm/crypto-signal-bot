@@ -39,11 +39,11 @@ func NewServer(cfg *config.Config, db *database.SupabaseClient, botService *serv
 }
 
 func (s *Server) setupRoutes() {
+	// Root endpoint
+	s.router.HandleFunc("/", s.handleRoot).Methods("GET")
+
 	// API prefix
 	api := s.router.PathPrefix("/api/v1").Subrouter()
-
-	// Health check
-	api.HandleFunc("/health", s.handleHealth).Methods("GET")
 	api.HandleFunc("/", s.handleRoot).Methods("GET")
 
 	// Bot status and control
@@ -113,33 +113,13 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"version":   "1.0.0",
 			"status":    "running",
-			"endpoints": []string{"/health", "/api/v1/bot/status", "/api/v1/bot/start", "/api/v1/bot/stop"},
+			"endpoints": []string{"/api/v1/bot/status", "/api/v1/bot/start", "/api/v1/bot/stop"},
 			"timestamp": time.Now().Format(time.RFC3339),
 		},
 	})
 }
 
-// Health check endpoint
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	health := models.HealthStatus{
-		Status:    "healthy",
-		Timestamp: time.Now(),
-		Version:   "1.0.0",
-		Database:  "connected",
-		Uptime:    "unknown", // TODO: Calculate actual uptime
-	}
 
-	// Test database connection
-	if err := s.db.TestConnection(); err != nil {
-		health.Status = "unhealthy"
-		health.Database = "disconnected"
-	}
-
-	s.writeJSON(w, http.StatusOK, models.APIResponse{
-		Success: true,
-		Data:    health,
-	})
-}
 
 // Bot status endpoint
 func (s *Server) handleBotStatus(w http.ResponseWriter, r *http.Request) {

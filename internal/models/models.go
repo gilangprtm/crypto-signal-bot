@@ -187,10 +187,4 @@ type APIResponse struct {
 	Message string      `json:"message,omitempty"`
 }
 
-type HealthStatus struct {
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
-	Version   string    `json:"version"`
-	Database  string    `json:"database"`
-	Uptime    string    `json:"uptime"`
-}
+
