@@ -9,12 +9,13 @@ restartPolicyMaxRetries = 3
 # Environment variables will be set in Railway dashboard
 # Required variables:
 # - COINMARKETCAP_API_KEY
-# - SUPABASE_URL  
+# - SUPABASE_URL
 # - SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_KEY
 # - TELEGRAM_BOT_TOKEN
 # - TELEGRAM_CHAT_ID
 # - PORT (automatically set by Railway)
+# - GODEBUG=netdns=go+1 (for IPv4 preference)
 
 [experimental]
 incrementalBuild = true

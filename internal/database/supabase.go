@@ -29,7 +29,8 @@ func NewSupabaseClient(cfg *config.Config) (*SupabaseClient, error) {
 
 	// Build connection string for Supabase PostgreSQL
 	// Use service key as password for database connection
-	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require password=%s",
+	// Force IPv4 to avoid IPv6 connection issues in production
+	connStr := fmt.Sprintf("host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require password=%s connect_timeout=10",
 		projectID, cfg.SupabaseServiceKey)
 
 	logrus.Debugf("Database connection string: host=db.%s.supabase.co port=5432 user=postgres dbname=postgres sslmode=require password=***", projectID)
@@ -38,6 +39,11 @@ func NewSupabaseClient(cfg *config.Config) (*SupabaseClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
+
+	// Set connection pool settings for production stability
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Hour)
 
 	// Configure connection pool
 	db.SetMaxOpenConns(25)

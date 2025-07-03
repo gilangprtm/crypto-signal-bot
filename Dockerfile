@@ -25,8 +25,9 @@ FROM alpine:latest
 # Install ca-certificates and wget for health checks
 RUN apk --no-cache add ca-certificates tzdata wget
 
-# Set timezone
+# Set timezone and network settings
 ENV TZ=Asia/Jakarta
+ENV GODEBUG=netdns=go+1
 
 # Create non-root user
 RUN adduser -D -s /bin/sh appuser
