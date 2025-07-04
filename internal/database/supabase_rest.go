@@ -270,6 +270,44 @@ func (s *SupabaseRestClient) GetRecentSignals(limit int) ([]models.TradingSignal
 	return signals, nil
 }
 
+func (s *SupabaseRestClient) SaveMarketSnapshot(snapshot *models.MarketSnapshot) error {
+	data := map[string]interface{}{
+		"id":               snapshot.ID,
+		"crypto_id":        snapshot.CryptoID,
+		"price":            snapshot.Price,
+		"volume_24h":       snapshot.Volume24h,
+		"market_cap":       snapshot.MarketCap,
+		"price_change_1h":  snapshot.PriceChange1h,
+		"price_change_24h": snapshot.PriceChange24h,
+		"price_change_7d":  snapshot.PriceChange7d,
+		"rsi":              snapshot.RSI,
+		"macd_line":        snapshot.MACDLine,
+		"macd_signal":      snapshot.MACDSignal,
+		"macd_histogram":   snapshot.MACDHistogram,
+		"bb_upper":         snapshot.BBUpper,
+		"bb_middle":        snapshot.BBMiddle,
+		"bb_lower":         snapshot.BBLower,
+		"sma_20":           snapshot.SMA20,
+		"ema_12":           snapshot.EMA12,
+		"ema_26":           snapshot.EMA26,
+		"fear_greed_index": snapshot.FearGreedIndex,
+		"timestamp":        snapshot.Timestamp,
+	}
+
+	resp, err := s.makeRequest("POST", "market_snapshots", data)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to save market snapshot: %s - %s", resp.Status, string(body))
+	}
+
+	return nil
+}
+
 func (s *SupabaseRestClient) Close() error {
 	// No connection to close for REST client
 	return nil

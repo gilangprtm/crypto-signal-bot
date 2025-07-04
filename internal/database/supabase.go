@@ -237,6 +237,9 @@ func (s *SupabaseClient) CreatePerformanceRecord(perf *models.SignalPerformance)
 
 // Market data
 func (s *SupabaseClient) SaveMarketSnapshot(snapshot *models.MarketSnapshot) error {
+	if s.useRest {
+		return s.restClient.SaveMarketSnapshot(snapshot)
+	}
 	query := `
 		INSERT INTO market_snapshots (
 			id, crypto_id, price, volume_24h, market_cap, price_change_1h,
