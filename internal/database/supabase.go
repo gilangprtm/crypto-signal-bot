@@ -251,7 +251,7 @@ func (s *SupabaseClient) SaveMarketSnapshot(snapshot *models.MarketSnapshot) err
 		)`
 
 	_, err := s.db.Exec(query,
-		snapshot.ID, snapshot.CryptoID, snapshot.Price, snapshot.Volume24h,
+		snapshot.ID, snapshot.CryptocurrencyID, snapshot.Price, snapshot.Volume24h,
 		snapshot.MarketCap, snapshot.PriceChange1h, snapshot.PriceChange24h,
 		snapshot.PriceChange7d, snapshot.RSI, snapshot.MACDLine, snapshot.MACDSignal,
 		snapshot.MACDHistogram, snapshot.BBUpper, snapshot.BBMiddle, snapshot.BBLower,

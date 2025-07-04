@@ -90,8 +90,8 @@ type SignalPerformance struct {
 
 // MarketSnapshot represents market data at a specific time
 type MarketSnapshot struct {
-	ID               uuid.UUID       `json:"id" db:"id"`
-	CryptoID         uuid.UUID       `json:"crypto_id" db:"crypto_id"`
+	ID                 uuid.UUID       `json:"id" db:"id"`
+	CryptocurrencyID   uuid.UUID       `json:"cryptocurrency_id" db:"cryptocurrency_id"` // Konsisten dengan schema
 	Price            decimal.Decimal `json:"price" db:"price"`
 	Volume24h        decimal.Decimal `json:"volume_24h" db:"volume_24h"`
 	MarketCap        decimal.Decimal `json:"market_cap" db:"market_cap"`
@@ -136,31 +136,38 @@ type LearningData struct {
 
 // NotificationLog represents a notification sent to user
 type NotificationLog struct {
-	ID             uuid.UUID  `json:"id" db:"id"`
-	SignalID       *uuid.UUID `json:"signal_id" db:"signal_id"`
-	ChannelType    string     `json:"channel_type" db:"channel_type"` // telegram, whatsapp
-	ChannelID      string     `json:"channel_id" db:"channel_id"`
-	MessageText    string     `json:"message_text" db:"message_text"`
-	SentAt         time.Time  `json:"sent_at" db:"sent_at"`
-	DeliveryStatus string     `json:"delivery_status" db:"delivery_status"` // sent, failed, delivered
+	ID                 uuid.UUID  `json:"id" db:"id"`
+	NotificationType   string     `json:"notification_type" db:"notification_type"` // Updated field name
+	Recipient          string     `json:"recipient" db:"recipient"`                  // Updated field name
+	Message            string     `json:"message" db:"message"`                      // Updated field name
+	SignalID           *uuid.UUID `json:"signal_id" db:"signal_id"`
+	CryptocurrencyID   *uuid.UUID `json:"cryptocurrency_id" db:"cryptocurrency_id"` // Added field
+	Status             string     `json:"status" db:"status"`                        // Updated field name
+	ErrorMessage       *string    `json:"error_message" db:"error_message"`          // Added field
+	SentAt             time.Time  `json:"sent_at" db:"sent_at"`
+	CreatedAt          time.Time  `json:"created_at" db:"created_at"`                // Added field
 }
 
 // SystemLog represents system logs
 type SystemLog struct {
-	ID        uuid.UUID              `json:"id" db:"id"`
-	Level     string                 `json:"level" db:"level"`
-	Component string                 `json:"component" db:"component"`
-	Message   string                 `json:"message" db:"message"`
-	Context   map[string]interface{} `json:"context" db:"context"`
-	CreatedAt time.Time              `json:"created_at" db:"created_at"`
+	ID         uuid.UUID              `json:"id" db:"id"`
+	LogLevel   string                 `json:"log_level" db:"log_level"`     // Updated field name
+	Component  string                 `json:"component" db:"component"`
+	Message    string                 `json:"message" db:"message"`
+	Context    map[string]interface{} `json:"context" db:"context"`
+	ErrorStack *string                `json:"error_stack" db:"error_stack"` // Added field
+	CreatedAt  time.Time              `json:"created_at" db:"created_at"`
 }
 
 // BotSetting represents bot configuration
 type BotSetting struct {
-	Key         string    `json:"key" db:"key"`
-	Value       string    `json:"value" db:"value"`
-	Description string    `json:"description" db:"description"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID           uuid.UUID `json:"id" db:"id"`
+	SettingKey   string    `json:"setting_key" db:"setting_key"`     // Updated field name
+	SettingValue string    `json:"setting_value" db:"setting_value"` // Updated field name
+	Description  *string   `json:"description" db:"description"`
+	DataType     string    `json:"data_type" db:"data_type"`         // Added field
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`       // Added field
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Analytics models

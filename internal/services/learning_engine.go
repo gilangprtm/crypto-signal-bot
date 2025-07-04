@@ -53,7 +53,29 @@ func NewLearningEngine(db *database.SupabaseClient, cfg *config.Config) *Learnin
 }
 
 func (le *LearningEngine) ExtractFeatures(marketData *MarketData, indicators *TechnicalIndicators) *FeatureVector {
-	// Calculate derived features
+	// Handle nil indicators gracefully
+	if indicators == nil {
+		logrus.Warn("Technical indicators not available, using basic features only")
+		return &FeatureVector{
+			RSI:             decimal.NewFromFloat(50), // Neutral RSI
+			MACDHistogram:   decimal.Zero,
+			BBPosition:      decimal.NewFromFloat(0.5), // Middle position
+			FearGreedIndex:  decimal.Zero,
+			PriceChange24h:  marketData.PriceChange24h,
+			Volume24h:       marketData.Volume24h,
+			PriceAboveSMA20: false,
+			EMACrossover:    false,
+			RSIOversold:     false,
+			RSIOverbought:   false,
+			MACDBullish:     false,
+			BBSqueeze:       false,
+			HighVolume:      false,
+			TrendDirection:  "neutral",
+			MarketSentiment: "neutral",
+		}
+	}
+
+	// Calculate derived features with valid indicators
 	bbPosition := le.calculateBBPosition(marketData.Price, indicators.BBUpper, indicators.BBLower)
 	priceAboveSMA20 := marketData.Price.GreaterThan(indicators.SMA20)
 	emaCrossover := indicators.EMA12.GreaterThan(indicators.EMA26)

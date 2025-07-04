@@ -189,17 +189,17 @@ func (bs *BotService) saveMarketSnapshot(crypto *models.Cryptocurrency, marketDa
 	}
 
 	snapshot := &models.MarketSnapshot{
-		ID:               uuid.New(),
-		CryptoID:         crypto.ID,
-		Price:            marketData.Price,
-		Volume24h:        marketData.Volume24h,
-		MarketCap:        marketData.MarketCap,
-		PriceChange1h:    marketData.PriceChange1h,
-		PriceChange24h:   marketData.PriceChange24h,
-		PriceChange7d:    marketData.PriceChange7d,
-		FearGreedIndex:   marketData.FearGreedIndex,
-		Timestamp:        marketData.Timestamp,
-		Crypto:           crypto,
+		ID:                 uuid.New(),
+		CryptocurrencyID:   crypto.ID,
+		Price:              marketData.Price,
+		Volume24h:          marketData.Volume24h,
+		MarketCap:          marketData.MarketCap,
+		PriceChange1h:      marketData.PriceChange1h,
+		PriceChange24h:     marketData.PriceChange24h,
+		PriceChange7d:      marketData.PriceChange7d,
+		FearGreedIndex:     marketData.FearGreedIndex,
+		Timestamp:          marketData.Timestamp,
+		Crypto:             crypto,
 	}
 
 	// Add technical indicators only if available
