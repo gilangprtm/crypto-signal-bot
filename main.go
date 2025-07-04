@@ -144,7 +144,7 @@ func main() {
 	logrus.Info("👋 Goodbye!")
 }
 
-const pidFile = "/tmp/crypto-signal-bot.pid"
+const pidFile = "crypto-signal-bot.pid"
 
 func createPIDFile() error {
 	// Check if PID file exists

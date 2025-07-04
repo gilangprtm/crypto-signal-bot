@@ -197,19 +197,23 @@ func (bs *BotService) saveMarketSnapshot(crypto *models.Cryptocurrency, marketDa
 		PriceChange1h:    marketData.PriceChange1h,
 		PriceChange24h:   marketData.PriceChange24h,
 		PriceChange7d:    marketData.PriceChange7d,
-		RSI:              indicators.RSI,
-		MACDLine:         indicators.MACDLine,
-		MACDSignal:       indicators.MACDSignal,
-		MACDHistogram:    indicators.MACDHistogram,
-		BBUpper:          indicators.BBUpper,
-		BBMiddle:         indicators.BBMiddle,
-		BBLower:          indicators.BBLower,
-		SMA20:            indicators.SMA20,
-		EMA12:            indicators.EMA12,
-		EMA26:            indicators.EMA26,
 		FearGreedIndex:   marketData.FearGreedIndex,
 		Timestamp:        marketData.Timestamp,
 		Crypto:           crypto,
+	}
+
+	// Add technical indicators only if available
+	if indicators != nil {
+		snapshot.RSI = indicators.RSI
+		snapshot.MACDLine = indicators.MACDLine
+		snapshot.MACDSignal = indicators.MACDSignal
+		snapshot.MACDHistogram = indicators.MACDHistogram
+		snapshot.BBUpper = indicators.BBUpper
+		snapshot.BBMiddle = indicators.BBMiddle
+		snapshot.BBLower = indicators.BBLower
+		snapshot.SMA20 = indicators.SMA20
+		snapshot.EMA12 = indicators.EMA12
+		snapshot.EMA26 = indicators.EMA26
 	}
 
 	return bs.db.SaveMarketSnapshot(snapshot)
