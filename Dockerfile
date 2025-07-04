@@ -38,10 +38,7 @@ WORKDIR /app
 # Copy binary from builder stage
 COPY --from=builder /app/crypto-signal-bot .
 
-# Copy any additional files if needed
-COPY --from=builder /app/supabase_schema.sql ./
-
-# Create tmp directory for PID file
+# Create tmp directory for logs and temporary files
 RUN mkdir -p /tmp && chmod 777 /tmp
 
 # Change ownership to appuser
