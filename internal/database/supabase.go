@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,82 +15,126 @@ import (
 )
 
 type SupabaseClient struct {
-	db  *sql.DB
-	cfg *config.Config
+	db        *sql.DB
+	restClient *SupabaseRestClient
+	cfg       *config.Config
+	useRest   bool
 }
 
 func NewSupabaseClient(cfg *config.Config) (*SupabaseClient, error) {
-	// Extract project ID from Supabase URL
-	projectID := extractProjectID(cfg.SupabaseURL)
-	logrus.Debugf("Extracted project ID: '%s' from URL: '%s'", projectID, cfg.SupabaseURL)
+	// Initialize REST client as fallback
+	restClient := NewSupabaseRestClient(cfg)
 
-	if projectID == "" {
-		return nil, fmt.Errorf("invalid Supabase URL: %s", cfg.SupabaseURL)
+	// Try direct database connection first
+	logrus.Info("Attempting direct database connection...")
+
+	// Get database connection details from environment variables
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	dbSSLMode := os.Getenv("DB_SSLMODE")
+
+	// Set defaults if not provided
+	if dbHost == "" {
+		// Fallback to extracting from Supabase URL
+		projectID := extractProjectID(cfg.SupabaseURL)
+		if projectID == "" {
+			logrus.Warn("Invalid Supabase URL and no DB_HOST provided, using REST API only")
+			return &SupabaseClient{
+				restClient: restClient,
+				cfg:        cfg,
+				useRest:    true,
+			}, nil
+		}
+		dbHost = fmt.Sprintf("db.%s.supabase.co", projectID)
+	}
+	if dbPort == "" {
+		dbPort = "5432"
+	}
+	if dbUser == "" {
+		dbUser = "postgres"
+	}
+	if dbPassword == "" {
+		// Fallback to service key
+		dbPassword = cfg.SupabaseServiceKey
+	}
+	if dbName == "" {
+		dbName = "postgres"
+	}
+	if dbSSLMode == "" {
+		dbSSLMode = "require"
 	}
 
-	// Resolve hostname to IPv4 address to avoid IPv6 issues
-	hostname := fmt.Sprintf("db.%s.supabase.co", projectID)
-	logrus.Debugf("Resolving hostname: %s", hostname)
+	logrus.Debugf("Connecting to database: host=%s port=%s user=%s dbname=%s sslmode=%s",
+		dbHost, dbPort, dbUser, dbName, dbSSLMode)
 
-	// Try to resolve to IPv4 address
-	ips, err := net.LookupIP(hostname)
-	var ipv4Host string
-	if err != nil {
-		logrus.Warnf("Failed to resolve hostname %s: %v, using hostname directly", hostname, err)
-		ipv4Host = hostname
-	} else {
-		// Find first IPv4 address
-		for _, ip := range ips {
-			if ip.To4() != nil {
-				ipv4Host = ip.String()
-				logrus.Debugf("Resolved %s to IPv4: %s", hostname, ipv4Host)
-				break
-			}
-		}
-		if ipv4Host == "" {
-			logrus.Warn("No IPv4 address found, using hostname")
-			ipv4Host = hostname
-		}
-	}
-
-	// Build connection string for Supabase PostgreSQL
-	// Use service key as password for database connection
-	connStr := fmt.Sprintf("host=%s port=5432 user=postgres dbname=postgres sslmode=require password=%s connect_timeout=10",
-		ipv4Host, cfg.SupabaseServiceKey)
-
-	logrus.Debugf("Database connection string: host=%s port=5432 user=postgres dbname=postgres sslmode=require password=***", ipv4Host)
+	// Build connection string for PostgreSQL
+	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s password=%s connect_timeout=10",
+		dbHost, dbPort, dbUser, dbName, dbSSLMode, dbPassword)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
+		logrus.Warnf("Failed to open database connection: %v, falling back to REST API", err)
+		return &SupabaseClient{
+			restClient: restClient,
+			cfg:        cfg,
+			useRest:    true,
+		}, nil
 	}
 
 	// Set connection pool settings for production stability
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(time.Hour)
-
-	// Configure connection pool
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		logrus.Warnf("Failed to ping database: %v, falling back to REST API", err)
+		db.Close()
+
+		// Test REST API connection
+		if err := restClient.TestConnection(); err != nil {
+			return nil, fmt.Errorf("both database and REST API connections failed: %w", err)
+		}
+
+		return &SupabaseClient{
+			restClient: restClient,
+			cfg:        cfg,
+			useRest:    true,
+		}, nil
+	}
+
+	logrus.Info("✅ Successfully connected to Supabase database via direct connection")
+
 	return &SupabaseClient{
-		db:  db,
-		cfg: cfg,
+		db:         db,
+		restClient: restClient,
+		cfg:        cfg,
+		useRest:    false,
 	}, nil
 }
 
 func (s *SupabaseClient) Close() error {
+	if s.useRest {
+		return s.restClient.Close()
+	}
 	return s.db.Close()
 }
 
 func (s *SupabaseClient) Ping() error {
+	if s.useRest {
+		return s.restClient.Ping()
+	}
 	return s.db.Ping()
 }
 
 // Signal operations
 func (s *SupabaseClient) CreateSignal(signal *models.TradingSignal) error {
+	if s.useRest {
+		return s.restClient.CreateSignal(signal)
+	}
 	query := `
 		INSERT INTO trading_signals (
 			id, crypto_id, action, confidence_score, entry_price, stop_loss,
@@ -125,6 +169,9 @@ func (s *SupabaseClient) CreateSignal(signal *models.TradingSignal) error {
 }
 
 func (s *SupabaseClient) GetActiveSignals() ([]*models.TradingSignal, error) {
+	if s.useRest {
+		return s.restClient.GetActiveSignals()
+	}
 	query := `
 		SELECT id, crypto_id, action, confidence_score, entry_price, stop_loss,
 			   take_profit_1, take_profit_2, reasoning, created_at, status
@@ -157,6 +204,9 @@ func (s *SupabaseClient) GetActiveSignals() ([]*models.TradingSignal, error) {
 }
 
 func (s *SupabaseClient) UpdateSignalStatus(signalID uuid.UUID, status string) error {
+	if s.useRest {
+		return s.restClient.UpdateSignalStatus(signalID, status)
+	}
 	query := `UPDATE trading_signals SET status = $1 WHERE id = $2`
 	_, err := s.db.Exec(query, status, signalID)
 	return err
@@ -288,7 +338,10 @@ func (s *SupabaseClient) LogSystem(level, component, message string, context map
 
 // GetCryptocurrencies retrieves all cryptocurrencies from database
 func (s *SupabaseClient) GetCryptocurrencies() ([]models.Cryptocurrency, error) {
-	query := `SELECT id, symbol, name, coingecko_id, is_active, created_at FROM cryptocurrencies ORDER BY symbol`
+	if s.useRest {
+		return s.restClient.GetCryptocurrencies()
+	}
+	query := `SELECT id, symbol, name, cmc_id, contract_address, platform, slug, coingecko_id, is_active, created_at, updated_at FROM cryptocurrencies ORDER BY symbol`
 
 	rows, err := s.db.Query(query)
 	if err != nil {
@@ -303,9 +356,14 @@ func (s *SupabaseClient) GetCryptocurrencies() ([]models.Cryptocurrency, error) 
 			&crypto.ID,
 			&crypto.Symbol,
 			&crypto.Name,
+			&crypto.CmcID,
+			&crypto.ContractAddress,
+			&crypto.Platform,
+			&crypto.Slug,
 			&crypto.CoingeckoID,
 			&crypto.IsActive,
 			&crypto.CreatedAt,
+			&crypto.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan cryptocurrency: %w", err)
@@ -318,21 +376,31 @@ func (s *SupabaseClient) GetCryptocurrencies() ([]models.Cryptocurrency, error) 
 
 // CreateCryptocurrency creates a new cryptocurrency record
 func (s *SupabaseClient) CreateCryptocurrency(crypto *models.Cryptocurrency) error {
+	if s.useRest {
+		return s.restClient.CreateCryptocurrency(crypto)
+	}
 	query := `
-		INSERT INTO cryptocurrencies (id, symbol, name, coingecko_id, is_active, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO cryptocurrencies (id, symbol, name, cmc_id, contract_address, platform, slug, coingecko_id, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 
 	crypto.ID = uuid.New()
 	crypto.CreatedAt = time.Now()
+	now := time.Now()
+	crypto.UpdatedAt = &now
 
 	_, err := s.db.Exec(query,
 		crypto.ID,
 		crypto.Symbol,
 		crypto.Name,
+		crypto.CmcID,
+		crypto.ContractAddress,
+		crypto.Platform,
+		crypto.Slug,
 		crypto.CoingeckoID,
 		crypto.IsActive,
 		crypto.CreatedAt,
+		crypto.UpdatedAt,
 	)
 
 	if err != nil {
@@ -344,6 +412,9 @@ func (s *SupabaseClient) CreateCryptocurrency(crypto *models.Cryptocurrency) err
 
 // GetRecentSignals retrieves recent trading signals
 func (s *SupabaseClient) GetRecentSignals(limit int) ([]models.TradingSignal, error) {
+	if s.useRest {
+		return s.restClient.GetRecentSignals(limit)
+	}
 	query := `
 		SELECT id, crypto_id, action, confidence_score, entry_price, stop_loss,
 		       take_profit_1, take_profit_2, market_conditions, created_at

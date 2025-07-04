@@ -9,12 +9,17 @@ import (
 
 // Cryptocurrency represents a cryptocurrency
 type Cryptocurrency struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Symbol      string    `json:"symbol" db:"symbol"`
-	Name        string    `json:"name" db:"name"`
-	CoingeckoID string    `json:"coingecko_id" db:"coingecko_id"`
-	IsActive    bool      `json:"is_active" db:"is_active"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	ID              uuid.UUID  `json:"id" db:"id"`
+	Symbol          string     `json:"symbol" db:"symbol"`
+	Name            string     `json:"name" db:"name"`
+	CmcID           *int       `json:"cmc_id" db:"cmc_id"`                     // CoinMarketCap ID
+	ContractAddress *string    `json:"contract_address" db:"contract_address"` // Smart contract address
+	Platform        *string    `json:"platform" db:"platform"`                // Blockchain platform (e.g., "ethereum", "binance-smart-chain")
+	Slug            *string    `json:"slug" db:"slug"`                         // CoinMarketCap slug
+	CoingeckoID     *string    `json:"coingecko_id" db:"coingecko_id"`        // Keep for backward compatibility
+	IsActive        bool       `json:"is_active" db:"is_active"`
+	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt       *time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // TradingSignal represents a trading signal

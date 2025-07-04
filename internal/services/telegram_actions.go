@@ -86,12 +86,11 @@ func (ns *NotificationService) addCoinToWatch(chatID int64, symbol string) {
 
 	// Add new cryptocurrency
 	newCrypto := &models.Cryptocurrency{
-		ID:          uuid.New(),
-		Symbol:      symbol,
-		Name:        getCoinName(symbol),
-		CoingeckoID: getCoinGeckoID(symbol),
-		IsActive:    true,
-		CreatedAt:   time.Now(),
+		ID:        uuid.New(),
+		Symbol:    symbol,
+		Name:      getCoinName(symbol),
+		IsActive:  true,
+		CreatedAt: time.Now(),
 	}
 
 	// Add to database

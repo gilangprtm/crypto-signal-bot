@@ -255,12 +255,11 @@ func (bs *BotService) initializeCryptoList() error {
 		logrus.Warn("Database not available, using default cryptocurrency list")
 		for _, defaultCrypto := range defaultCryptos {
 			newCrypto := &models.Cryptocurrency{
-				ID:          uuid.New(),
-				Symbol:      defaultCrypto.Symbol,
-				Name:        defaultCrypto.Name,
-				CoingeckoID: defaultCrypto.CoingeckoID,
-				IsActive:    true,
-				CreatedAt:   time.Now(),
+				ID:        uuid.New(),
+				Symbol:    defaultCrypto.Symbol,
+				Name:      defaultCrypto.Name,
+				IsActive:  true,
+				CreatedAt: time.Now(),
 			}
 			bs.cryptoList = append(bs.cryptoList, newCrypto)
 		}
@@ -275,12 +274,11 @@ func (bs *BotService) initializeCryptoList() error {
 		// Fallback to default list
 		for _, defaultCrypto := range defaultCryptos {
 			newCrypto := &models.Cryptocurrency{
-				ID:          uuid.New(),
-				Symbol:      defaultCrypto.Symbol,
-				Name:        defaultCrypto.Name,
-				CoingeckoID: defaultCrypto.CoingeckoID,
-				IsActive:    true,
-				CreatedAt:   time.Now(),
+				ID:        uuid.New(),
+				Symbol:    defaultCrypto.Symbol,
+				Name:      defaultCrypto.Name,
+				IsActive:  true,
+				CreatedAt: time.Now(),
 			}
 			bs.cryptoList = append(bs.cryptoList, newCrypto)
 		}
@@ -301,12 +299,11 @@ func (bs *BotService) initializeCryptoList() error {
 		} else {
 			// Create new cryptocurrency
 			newCrypto := &models.Cryptocurrency{
-				ID:          uuid.New(),
-				Symbol:      defaultCrypto.Symbol,
-				Name:        defaultCrypto.Name,
-				CoingeckoID: defaultCrypto.CoingeckoID,
-				IsActive:    true,
-				CreatedAt:   time.Now(),
+				ID:        uuid.New(),
+				Symbol:    defaultCrypto.Symbol,
+				Name:      defaultCrypto.Name,
+				IsActive:  true,
+				CreatedAt: time.Now(),
 			}
 
 			if err := bs.db.CreateCryptocurrency(newCrypto); err != nil {
